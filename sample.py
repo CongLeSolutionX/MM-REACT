@@ -67,7 +67,7 @@ def edit_photo(query: str) -> str:
     response = requests.post(endpoint, json=job)
     if response.status_code != 200:
         return "Could not finish the task try again later!"
-    return "Here is the edited image " + endpoint + response.json()["edited_image"]
+    return f"Here is the edited image {endpoint}" + response.json()["edited_image"]
 
 # these tools should not step on each other's toes
 tools = [

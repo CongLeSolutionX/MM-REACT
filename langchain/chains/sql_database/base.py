@@ -59,10 +59,11 @@ class SQLDatabaseChain(Chain, BaseModel):
 
         :meta private:
         """
-        if not self.return_intermediate_steps:
-            return [self.output_key]
-        else:
-            return [self.output_key, "intermediate_steps"]
+        return (
+            [self.output_key, "intermediate_steps"]
+            if self.return_intermediate_steps
+            else [self.output_key]
+        )
 
     def _call(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         llm_chain = LLMChain(llm=self.llm, prompt=self.prompt)
@@ -78,9 +79,8 @@ class SQLDatabaseChain(Chain, BaseModel):
             "table_info": table_info,
             "stop": ["\nSQLResult:"],
         }
-        intermediate_steps = []
         sql_cmd = llm_chain.predict(**llm_inputs)
-        intermediate_steps.append(sql_cmd)
+        intermediate_steps = [sql_cmd]
         self.callback_manager.on_text(sql_cmd, color="green", verbose=self.verbose)
         result = self.database.run(sql_cmd)
         intermediate_steps.append(result)

@@ -134,8 +134,7 @@ class Agent(BaseModel):
         """Create the full inputs for the LLMChain from intermediate steps."""
         thoughts = self._construct_scratchpad(intermediate_steps)
         new_inputs = {"agent_scratchpad": thoughts, "stop": self._stop}
-        full_inputs = {**kwargs, **new_inputs}
-        return full_inputs
+        return kwargs | new_inputs
 
     def prepare_for_new_call(self) -> None:
         """Prepare the agent for new call, if needed."""
@@ -233,7 +232,7 @@ class Agent(BaseModel):
                 "\n\nI now need to return a final answer based on the previous steps:"
             )
             new_inputs = {"agent_scratchpad": thoughts, "stop": self._stop}
-            full_inputs = {**kwargs, **new_inputs}
+            full_inputs = kwargs | new_inputs
             full_output = self.llm_chain.predict(**full_inputs)
             # We try to extract a final answer
             parsed_output = self._extract_tool_and_input(full_output)
@@ -241,13 +240,11 @@ class Agent(BaseModel):
                 # If we cannot extract, we just return the full output
                 return AgentFinish({"output": full_output}, full_output)
             tool, tool_input = parsed_output
-            if tool == self.finish_tool_name:
-                # If we can extract, we send the correct stuff
-                return AgentFinish({"output": tool_input}, full_output)
-            else:
-                # If we can extract, but the tool is not the final tool,
-                # we just return the full output
-                return AgentFinish({"output": full_output}, full_output)
+            return (
+                AgentFinish({"output": tool_input}, full_output)
+                if tool == self.finish_tool_name
+                else AgentFinish({"output": full_output}, full_output)
+            )
         else:
             raise ValueError(
                 "early_stopping_method should be one of `force` or `generate`, "
@@ -278,11 +275,7 @@ class Agent(BaseModel):
             agent.agent.save(file_path="path/agent.yaml")
         """
         # Convert file to Path object.
-        if isinstance(file_path, str):
-            save_path = Path(file_path)
-        else:
-            save_path = file_path
-
+        save_path = Path(file_path) if isinstance(file_path, str) else file_path
         directory_path = save_path.parent
         directory_path.mkdir(parents=True, exist_ok=True)
 
@@ -326,12 +319,13 @@ class AgentExecutor(Chain, BaseModel):
         """Validate that tools are compatible with agent."""
         agent = values["agent"]
         tools = values["tools"]
-        if agent.allowed_tools is not None:
-            if set(agent.allowed_tools) != set([tool.name for tool in tools]):
-                raise ValueError(
-                    f"Allowed tools ({agent.allowed_tools}) different than "
-                    f"provided tools ({[tool.name for tool in tools]})"
-                )
+        if agent.allowed_tools is not None and set(agent.allowed_tools) != {
+            tool.name for tool in tools
+        }:
+            raise ValueError(
+                f"Allowed tools ({agent.allowed_tools}) different than "
+                f"provided tools ({[tool.name for tool in tools]})"
+            )
         return values
 
     def save(self, file_path: Union[Path, str]) -> None:

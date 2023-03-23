@@ -27,11 +27,13 @@ class OpenAICallbackHandler(BaseCallbackHandler):
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
         """Collect token usage."""
-        if response.llm_output is not None:
-            if "token_usage" in response.llm_output:
-                token_usage = response.llm_output["token_usage"]
-                if "total_tokens" in token_usage:
-                    self.total_tokens += token_usage["total_tokens"]
+        if (
+            response.llm_output is not None
+            and "token_usage" in response.llm_output
+        ):
+            token_usage = response.llm_output["token_usage"]
+            if "total_tokens" in token_usage:
+                self.total_tokens += token_usage["total_tokens"]
 
     def on_llm_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any

@@ -56,22 +56,18 @@ class LLMChain(Chain, BaseModel):
     def generate(self, input_list: List[Dict[str, Any]]) -> LLMResult:
         """Generate LLM result from inputs."""
         prompts, stop = self.prep_prompts(input_list)
-        response = self.llm.generate(prompts, stop=stop)
-        return response
+        return self.llm.generate(prompts, stop=stop)
 
     async def agenerate(self, input_list: List[Dict[str, Any]]) -> LLMResult:
         """Generate LLM result from inputs."""
         prompts, stop = await self.aprep_prompts(input_list)
-        response = await self.llm.agenerate(prompts, stop=stop)
-        return response
+        return await self.llm.agenerate(prompts, stop=stop)
 
     def prep_prompts(
         self, input_list: List[Dict[str, Any]]
     ) -> Tuple[List[str], Optional[List[str]]]:
         """Prepare prompts from inputs."""
-        stop = None
-        if "stop" in input_list[0]:
-            stop = input_list[0]["stop"]
+        stop = input_list[0]["stop"] if "stop" in input_list[0] else None
         prompts = []
         for inputs in input_list:
             selected_inputs = {k: inputs[k] for k in self.prompt.input_variables}
@@ -90,9 +86,7 @@ class LLMChain(Chain, BaseModel):
         self, input_list: List[Dict[str, Any]]
     ) -> Tuple[List[str], Optional[List[str]]]:
         """Prepare prompts from inputs."""
-        stop = None
-        if "stop" in input_list[0]:
-            stop = input_list[0]["stop"]
+        stop = input_list[0]["stop"] if "stop" in input_list[0] else None
         prompts = []
         for inputs in input_list:
             selected_inputs = {k: inputs[k] for k in self.prompt.input_variables}

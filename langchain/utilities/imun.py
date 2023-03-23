@@ -93,14 +93,10 @@ def _get_person(o):
     if age < 20:
         if gender == "female":
             return "young woman"
-        if gender == "male":
-            return "young man"
-        return "young person"
+        return "young man" if gender == "male" else "young person"
     if gender == "female":
         return "woman"
-    if gender == "male":
-        return "man"
-    return "person"
+    return "man" if gender == "male" else "person"
 
 def _is_handwritten(styles):
     handwritten = False
@@ -121,12 +117,13 @@ def _parse_document(analyzeResult):
             subitem = item.get("content") or ""
             if "\n" in subitem:
                 content = content.replace(subitem, subitem.replace("\n", " "))
-            price = ((item.get("valueObject") or {}).get("TotalPrice") or {}).get("valueNumber")
-            if price:
+            if price := (
+                (item.get("valueObject") or {}).get("TotalPrice") or {}
+            ).get("valueNumber"):
                 new_total = True
                 total += price
     if new_total:
-        content += f"\nTotal amount {total}" 
+        content += f"\nTotal amount {total}"
     return content.split("\n")    
 
 def _parse_table(analyzeResult):
@@ -156,10 +153,9 @@ def _parse_table(analyzeResult):
                 line = "|" + "|".join(["---"] * col_count) + "|"
                 content.append(line)
 
-    # TODO: keep out of table words before/after the table based on their coordinates
-    # keep words not in the table
-    raw_content = "\n".join([t.strip() for t in raw_content.split("\n")]).strip()
-    if raw_content:
+    if raw_content := "\n".join(
+        [t.strip() for t in raw_content.split("\n")]
+    ).strip():
         content = [raw_content, ""] + content
     return content
 
@@ -288,11 +284,11 @@ def create_prompt(results: Dict) -> str:
         # did not find anything
         task = results.get("task") or ""
         if task == "OCR":
-            return answer + "This image is too blurry for OCR text extraction"
+            return f"{answer}This image is too blurry for OCR text extraction"
         if task == "celebrities":
-            return answer + "Did not find any celebrities in this image"
-        return answer + "This image is too blurry"
-    
+            return f"{answer}Did not find any celebrities in this image"
+        return f"{answer}This image is too blurry"
+
     if objects and captions:
         answer += IMUN_PROMPT_CAPTIONS.format(captions=_concat_objects(_merge_objects(objects, captions)))
     else:
@@ -359,8 +355,7 @@ class ImunAPIWrapper(BaseModel):
         )
         _handle_error(response)
         api_results = None
-        delayed_job = response.headers.get("Operation-Location")
-        if delayed_job:
+        if delayed_job := response.headers.get("Operation-Location"):
             headers = {"Ocp-Apim-Subscription-Key": self.imun_subscription_key}
             running = True
             while running:
@@ -371,7 +366,7 @@ class ImunAPIWrapper(BaseModel):
                 _handle_error(response)
                 api_results = response.json()
                 running = (api_results["status"] or "failed") == "running"
-        
+
         if api_results is None:
             api_results = response.json()
 
@@ -406,34 +401,30 @@ class ImunAPIWrapper(BaseModel):
             results["tags"] = [o["name"] for o in api_results["tagsResult"]["values"]]
         if "readResult" in api_results:
             words = api_results["readResult"]["pages"][0]["words"]
-            words = [o["content"] for o in words]
-            if words:
+            if words := [o["content"] for o in words]:
                 results["words"] = words
             if _is_handwritten(api_results["readResult"]["styles"]):
                 results["words_style"] = "handwritten "
         if "analyzeResult" in api_results:
-            is_table = False
-            is_document = False
             if "size" not in results:
-                for idx, page in enumerate(api_results["analyzeResult"]["pages"]):
+                for page in api_results["analyzeResult"]["pages"]:
                     results["size"] = {"width": page["width"], "height": page["height"]}
                     break
-            for doc in api_results["analyzeResult"].get("documents") or []:
-                if doc.get("fields"):
-                    is_document = True
-                    break
-            for doc in api_results["analyzeResult"].get("tables") or []:
-                if doc.get("cells") and doc.get("rowCount"):
-                    is_table = True
-                    break
+            is_document = any(
+                doc.get("fields")
+                for doc in api_results["analyzeResult"].get("documents") or []
+            )
+            is_table = any(
+                doc.get("cells") and doc.get("rowCount")
+                for doc in api_results["analyzeResult"].get("tables") or []
+            )
             if is_table:
                 results["words"] = _parse_table(api_results["analyzeResult"])
             elif is_document:
                 results["words"] = _parse_document(api_results["analyzeResult"])
             else:
-                for idx, page in enumerate(api_results["analyzeResult"]["pages"]):
-                    lines = [o["content"]  for o in page["lines"]]
-                    if lines:
+                for page in api_results["analyzeResult"]["pages"]:
+                    if lines := [o["content"] for o in page["lines"]]:
                         results["words"] = lines
                     break  # TODO: handle more pages
                 if _is_handwritten(api_results["analyzeResult"]["styles"]):
@@ -476,9 +467,7 @@ class ImunAPIWrapper(BaseModel):
     def run(self, query: str) -> str:
         """Run query through Image Understanding and parse result."""
         results = self._imun_results(query)
-        if results is None:
-            return "This is an invalid url"
-        return create_prompt(results)
+        return "This is an invalid url" if results is None else create_prompt(results)
 
     def results(self, query: str) -> List[Dict]:
         """Run query through Image Understanding and return metadata.
@@ -494,8 +483,7 @@ class ImunAPIWrapper(BaseModel):
                 captions - The description of the object.
                 tags - The tags seen in the image.
         """
-        results = self._imun_results(query)
-        return results
+        return self._imun_results(query)
 
 class ImunMultiAPIWrapper(BaseModel):
     """Wrapper for Multi Image Understanding API.
@@ -510,9 +498,7 @@ class ImunMultiAPIWrapper(BaseModel):
     def run(self, query: str) -> str:
         """Run query through Multiple Image Understanding and parse the aggregate result."""
         results = self.results(query)
-        if results is None:
-            return "This is an invalid url"
-        return create_prompt(results)
+        return "This is an invalid url" if results is None else create_prompt(results)
         
     def results(self, query: str) -> List[Dict]:
         """Run query through All Image Understanding tools and aggregate the metadata.
