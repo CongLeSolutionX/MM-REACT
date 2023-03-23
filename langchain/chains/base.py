@@ -79,10 +79,7 @@ class Chain(BaseModel, ABC):
 
         This allows users to pass in None as verbose to access the global setting.
         """
-        if verbose is None:
-            return _get_verbosity()
-        else:
-            return verbose
+        return _get_verbosity() if verbose is None else verbose
 
     @property
     @abstractmethod
@@ -96,8 +93,7 @@ class Chain(BaseModel, ABC):
 
     def _validate_inputs(self, inputs: Dict[str, str]) -> None:
         """Check that all inputs are present."""
-        missing_keys = set(self.input_keys).difference(inputs)
-        if missing_keys:
+        if missing_keys := set(self.input_keys).difference(inputs):
             raise ValueError(f"Missing some input keys: {missing_keys}")
 
     def _validate_outputs(self, outputs: Dict[str, str]) -> None:
@@ -194,10 +190,7 @@ class Chain(BaseModel, ABC):
         self._validate_outputs(outputs)
         if self.memory is not None:
             self.memory.save_context(inputs, outputs)
-        if return_only_outputs:
-            return outputs
-        else:
-            return {**inputs, **outputs}
+        return outputs if return_only_outputs else inputs | outputs
 
     def prep_inputs(self, inputs: Union[Dict[str, Any], Any]) -> Dict[str, str]:
         """Validate and prep inputs."""
@@ -229,9 +222,7 @@ class Chain(BaseModel, ABC):
         """Run the chain as text in, text out or multiple variables, text out."""
         if len(self.output_keys) == 2:
             assert "output" in self.output_keys and "intermediate_steps" in self.output_keys
-            keep_short = False
-            if "keep_short" in kwargs:
-                keep_short = kwargs.pop("keep_short")
+            keep_short = kwargs.pop("keep_short") if "keep_short" in kwargs else False
             outputs = {}
             if args and not kwargs:
                 if len(args) != 1:
@@ -243,7 +234,7 @@ class Chain(BaseModel, ABC):
             conversation = []
             for action, action_output in intermediate:
                 action: str = action.log.strip()
-                if not action.startswith(f"AI:"):
+                if not action.startswith("AI:"):
                     action = f"AI: {action}"
                 if keep_short:
                     # Hide the internal conversation
@@ -275,10 +266,10 @@ class Chain(BaseModel, ABC):
         if args and not kwargs:
             if len(args) != 1:
                 raise ValueError("`run` supports only one positional argument.")
-            return ["AI: " + self(args[0])[self.output_keys[0]]]
+            return [f"AI: {self(args[0])[self.output_keys[0]]}"]
 
         if kwargs and not args:
-            return ["AI: " + self(kwargs)[self.output_keys[0]]]
+            return [f"AI: {self(kwargs)[self.output_keys[0]]}"]
 
         raise ValueError(
             f"`run` supported with either positional arguments or keyword arguments"
@@ -300,12 +291,12 @@ class Chain(BaseModel, ABC):
             assistant = ""
             for action, action_output in intermediate:
                 action: str = action.log.strip()
-                if not action.startswith(f"AI:"):
+                if not action.startswith("AI:"):
                     action = f"AI: {action}"
                 action_output = f"Assistant: {action_output}"
                 assistant += "\n" + action + "\n" + action_output
             return assistant + "\n" + "AI: " + outputs["output"]
-            
+
         if len(self.output_keys) != 1:
             raise ValueError(
                 f"`run` not supported when there is not exactly "
@@ -366,11 +357,7 @@ class Chain(BaseModel, ABC):
             chain.save(file_path="path/chain.yaml")
         """
         # Convert file to Path object.
-        if isinstance(file_path, str):
-            save_path = Path(file_path)
-        else:
-            save_path = file_path
-
+        save_path = Path(file_path) if isinstance(file_path, str) else file_path
         directory_path = save_path.parent
         directory_path.mkdir(parents=True, exist_ok=True)
 

@@ -75,7 +75,6 @@ class CohereEmbeddings(BaseModel, Embeddings):
         Returns:
             Embeddings for the text.
         """
-        embedding = self.client.embed(
+        return self.client.embed(
             model=self.model, texts=[text], truncate=self.truncate
         ).embeddings[0]
-        return embedding

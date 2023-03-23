@@ -103,8 +103,7 @@ class BingSearchAPIWrapper(BaseModel):
         result = search_term
         if news:
             result += f"\n{news}"
-        other_tags = [t for t in other_tags if t]
-        if other_tags:
+        if other_tags := [t for t in other_tags if t]:
             other_tags = ",".join(set(other_tags))
             result += f"\nRelated tags in the image: {other_tags}"
         if related and not result:
@@ -117,8 +116,7 @@ class BingSearchAPIWrapper(BaseModel):
     def _bing_search_results(self, search_term: str, count: int) -> List[dict]:
         visual_results = []
         if self.bing_vis_search_url:
-            data = self._get_image(search_term)
-            if data:
+            if data := self._get_image(search_term):
                 # if an image is being serached
                 headers = {"Ocp-Apim-Subscription-Key": self.bing_subscription_key_vis}
                 formData = {

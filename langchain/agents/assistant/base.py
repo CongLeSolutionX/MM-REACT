@@ -71,10 +71,7 @@ class AssistantAgent(Agent):
             return True
         if "anything else you would like" in line:
             return True
-        if "Previous conversation history" in line:
-            return True
-
-        return False
+        return "Previous conversation history" in line
     
     @staticmethod
     def _fix_chatgpt(text: str) -> str:
@@ -122,10 +119,7 @@ class AssistantAgent(Agent):
             elif "business card" in cmd:
                 action = "Business Card Understanding"
             elif "ocr" in cmd:
-                if is_table:
-                    action = "Layout Understanding"
-                else:
-                    action = "OCR Understanding"
+                action = "Layout Understanding" if is_table else "OCR Understanding"
             elif "celebrit" in cmd:
                 action = "Celebrity Understanding"
             elif "landmark" in cmd:
@@ -135,7 +129,7 @@ class AssistantAgent(Agent):
             else:
                 action = "Image Understanding"
             return action, action_input
-        
+
         if f"{self.ai_prefix}:" in llm_output:
             return self.ai_prefix, llm_output.split(f"{self.ai_prefix}:")[-1].strip()
         return self.ai_prefix, llm_output.strip()

@@ -64,8 +64,7 @@ class FewShotPromptWithTemplates(BasePromptTemplate, BaseModel):
         expected_input_variables = set(values["suffix"].input_variables)
         if values["prefix"] is not None:
             expected_input_variables |= set(values["prefix"].input_variables)
-        missing_vars = expected_input_variables.difference(input_variables)
-        if missing_vars:
+        if missing_vars := expected_input_variables.difference(input_variables):
             raise ValueError(
                 f"Got input_variables={input_variables}, but based on prefix/suffix "
                 f"expected {expected_input_variables}"
@@ -114,7 +113,7 @@ class FewShotPromptWithTemplates(BasePromptTemplate, BaseModel):
             prefix_kwargs = {
                 k: v for k, v in kwargs.items() if k in self.prefix.input_variables
             }
-            for k in prefix_kwargs.keys():
+            for k in prefix_kwargs:
                 kwargs.pop(k)
             prefix = self.prefix.format(**prefix_kwargs)
 
@@ -122,7 +121,7 @@ class FewShotPromptWithTemplates(BasePromptTemplate, BaseModel):
         suffix_kwargs = {
             k: v for k, v in kwargs.items() if k in self.suffix.input_variables
         }
-        for k in suffix_kwargs.keys():
+        for k in suffix_kwargs:
             kwargs.pop(k)
         suffix = self.suffix.format(
             **suffix_kwargs,
